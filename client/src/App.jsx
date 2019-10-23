@@ -1,14 +1,32 @@
 import React, { useState, useEffect , useLayoutEffect } from 'react';
 import axios from 'axios';
-import Layout from './Layout.jsx';
+import CalendarLayout from './CalendarLayout.jsx';
+import moment from 'moment';
 
 function App () {
+  const currentYear = moment().format('YYYY');
+  const defaultYear = {}
+  defaultYear[currentYear] = {
+    January: [],
+    February: [],
+    March: [],
+    April: [],
+    May: [],
+    June: [],
+    July: [],
+    August: [],
+    September: [],
+    October: [],
+    November: [],
+    December: []
+  }
   const [currentListing, changeListing] = useState({
     listing: 9999999,
     minStayLength: 9,
     ratePerNight: 9999,
     cleaningFee: 999,
-    discounts: []
+    discounts: {},
+    datesReserved: defaultYear
   });
 
   // on load get a random listing
@@ -16,9 +34,25 @@ function App () {
     getListing();
   }, [])
 
-  function getListing() {
-    axios.get('http://localhost:3000/rooms')
+  function getRandomListing() {
+    axios.get('http://localhost:3010/rooms')
     .then((response) => {
+      // console.log('URL', window.location);
+      // console.log('RESPONSE DATA', response.data);
+      // REDIRECT URL TO RESPONSE.DATA listing id
+      // then change listing to result of that GET request
+      changeListing(response.data[0]);
+    })
+  }
+
+  function getListing() {
+    // console.log('WINDOW LOCATION', document.location.pathname)
+    var location = document.location.pathname;
+    var regex = RegExp(/\d{7}/);
+    var listingID = regex.exec(location)[0];
+    axios.get(`http://localhost:3010/listings/${listingID}`)
+    .then((response) => {
+      // console.log(response.data[0])
       changeListing(response.data[0]);
     })
   }
@@ -26,20 +60,11 @@ function App () {
   // RENDER LAYOUT AFTER GETTING FIRST LISTING
   return (
     <div>
-      <span>
-        <button onClick={getListing}>GET RANDOM LISTING</button>
-        <br></br>
-          <div>
-            <ul>
-              <li>Current Listing: {currentListing.listing}</li>
-              <li>Minimum Stay Length: {currentListing.minStayLength}</li>
-              <li>Rate Per Night: {currentListing.ratePerNight}</li>
-              <li>Cleaning Fee: {currentListing.cleaningFee}</li>
-            </ul>
-          </div>
-      </span>
       <hr></hr>
-      <Layout currentListing={currentListing}/>
+      <br></br>
+      <CalendarLayout currentListing={currentListing}/>
+      <br></br>
+      <hr></hr>
     </div>
   );
 };

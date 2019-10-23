@@ -4,9 +4,10 @@ var db = require('./database/models/listings.js');
 /* 
 listing => unique, 7 random digits
 minStayLength => random int between 1 and 7
+maxStayLength => Default is 30 days, 30% chance to be set to a week
 ratePerNight => random int between 50 and 2000
 cleaningFee => random int between 0 to 200
-datesReserved => year obj that contains month props with reserved dates values
+datesReserved => year obj that contains month props with reserved date moments
 discounts => generate discount objects // will only be week or month discounts 7 days or 30 days
 
 serviceFee => // relate to rate per night. Done by equation, Max is 30% for 1 night, decreases to 15% with additional days. Start with 15% of ratePerNight
@@ -28,13 +29,21 @@ var generateListings = (numOfListings) => {
     if (result.indexOf(currentNum) < 0) {
       result.push(currentNum);
     }
-    
   }
   return result;
 };
 
 var generateMinStayLength = () => {
   return Math.ceil(Math.random() * 7);
+};
+
+var generateMaxStayLength = () => {
+  var seedType = Math.floor(Math.random() * 10);
+  var result = 30;
+  if (seedType < 3) {
+    result = 7;
+  }
+  return result;
 };
 
 var generateRatePerNight = () => {
@@ -55,11 +64,11 @@ var generateDatesReserved = (numOfYears) => {
   case 1: // MED POPULARITY 10-20 DAYS RESERVED
     numDaysToReserve = Math.floor(Math.random() * 11) + 10;
     break;
-  case 2: // HIGH POPULARITY 20-30 DAYS RESERVED
-    numDaysToReserve = Math.floor(Math.random() * 11) + 20;
+  case 2: // HIGH POPULARITY 20-25 DAYS RESERVED
+    numDaysToReserve = Math.floor(Math.random() * 6) + 20;
     break;
   }
-  var results = [];
+  var results = {};
   for (let i = 0; i < numOfYears; i++) {
     var year = moment().year() + i;
     var currentYear = {};
@@ -68,53 +77,46 @@ var generateDatesReserved = (numOfYears) => {
       var numOfDays = moment(`${year}-${currentMonth}`, 'YYYY-MMMM').daysInMonth();
       var reservedDates = [];
       for (let k = 0; k < numDaysToReserve; k++) {
-        var dateToReserve = Math.ceil(Math.random() * numOfDays);
-        while (reservedDates.indexOf(dateToReserve) > 0) {
-          dateToReserve = Math.ceil(Math.random() * numOfDays);
+        var randomDay = Math.ceil(Math.random() * numOfDays);
+        var dateToReserve = moment(`${randomDay}-${currentMonth}-${year}`, 'D-MMMM-YYYY', true).format('D-MMMM-YYYY');
+        while (reservedDates.includes(dateToReserve)) {
+          var otherRandomDay = Math.ceil(Math.random() * numOfDays);
+          dateToReserve = moment(`${otherRandomDay}-${currentMonth}-${year}`, 'D-MMMM-YYYY', true).format('D-MMMM-YYYY');
         }
         reservedDates.push(dateToReserve);
       }
-      reservedDates = reservedDates.sort( (a, b) => { return a - b; });
+      // reservedDates = reservedDates.sort( (a, b) => { return a - b; }); // DONT NEED TO SORT MOMENTS
       currentYear[currentMonth] = reservedDates;
     }
-    results.push(currentYear);
+    results[year] = currentYear;
   }
   return results;
 };
 
 var generateDiscounts = () => {
   var generateWeekDiscount = () => {
-    var discount = Math.floor(Math.random() * 11) + 10;
-    return {
-      discount: discount,
-      type: 'weekly'
-    };
+    return Math.floor(Math.random() * 11) + 10;
   };
 
   var generateMonthDiscount = () => {
-    var discount = Math.floor(Math.random() * 16) + 10;
-    return {
-      discount: discount,
-      type: 'monthly'
-    };
+    return Math.floor(Math.random() * 16) + 10;
   };
 
-  var results = [];
+  var results = {};
   var seedType = Math.floor(Math.random() * 4);
 
   switch (seedType) {
   case 1:
-    results.push(generateWeekDiscount());
+    results.week = generateWeekDiscount();
     break;
   case 2:
-    results.push(generateMonthDiscount());
+    results.month = generateMonthDiscount();
     break;
   case 3:
-    results.push(generateMonthDiscount());
-    results.push(generateWeekDiscount());
+    results.week = generateWeekDiscount();
+    results.month = generateMonthDiscount();
     break;
   }
-
   return results;
 };
 
@@ -125,6 +127,7 @@ var seedDatabase = (numOfListings, numOfYears) => {
     var currentListing = {
       listing: listings.pop(),
       minStayLength: generateMinStayLength(),
+      maxStayLength: generateMaxStayLength(),
       ratePerNight: generateRatePerNight(),
       cleaningFee: generateCleaningFee(),
       datesReserved: generateDatesReserved(numOfYears),
